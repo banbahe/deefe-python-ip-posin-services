@@ -1,0 +1,96 @@
+from flask import Flask, request
+from flask_restful import Resource, Api, reqparse
+from pkg_resources import require
+import controllers.Products 
+
+app = Flask(__name__)
+api = Api(app)
+
+items = []
+
+
+class Item(Resource):
+    parser = reqparse.RequestParser()
+    parser.add_argument('price',
+                        type=float,
+                        required=True,
+                        help='this field cannot be left blank!')
+    
+    def delete(self, name):
+        global items
+        items = list(filter(lambda x: x['name'] != name, items))
+        return {'message': 'Item deleted'}
+
+    def put(self, name):
+        data = Item.parser.parse_args()
+        item = next(filter(lambda x: x['name'] == name, items), None)
+        if item is None:
+            item = {'name': name, 'price': data['price']}
+            items.append(item)
+        else:
+            item.update(data)
+        return item
+
+        # parser = reqparse.RequestParser()
+        # parser.add_argument('price',
+        #                     type=float,
+        #                     require=True,
+        #                     help='This field cannot be left blank!')
+        # data = parser.parse_args()
+        # # print (data['another'])
+
+        # item = next(filter(lambda x: x['name'] == name, items), None)
+        # if item is None:
+        #     item = {'name': name, 'price': data['price']}
+        #     items.append(item)
+        # else:
+        #     item.update(data)
+        # return item
+
+    def get(self, name):
+        item = next(filter(lambda x: x['name'] == name, items), None)
+        return {'item': item}, 200 if item is not None else 404
+    # def get(self, name):
+    #     for item in items:
+    #         if item['name'] == name:
+    #             return item
+    #     return {'item': None}, 404
+
+    def post(self, name):
+        if next(filter(lambda x: x['name'] == name, items), None):
+            return {'message': f'An Item with name{name} already exist.'.format(name)}, 400
+        # data = request.get_json()
+        data = Item.parser.parse_args() 
+        item = {'name': name, 'price': data['price']}
+        items.append(item)
+        return item, 201
+
+    # def post(self, name):
+    #     # data = request.get_json(force=True)
+    #     # data = request.get_json(silent=True)
+    #     data = request.get_json()
+    #     item = {'name': name, 'price': data['price']}
+    #     items.append(item)
+    #     return item, 201
+
+    # def post(self, name):
+    #     item = {'name': name, 'price': 12.01}
+    #     items.append(item)
+    #     return item
+
+
+class ItemList(Resource):
+    def get(self):
+        return {'items': items}
+
+
+api.add_resource(Item, '/item/<string:name>')
+api.add_resource(ItemList, '/items')
+api.add_resource(controllers.Products ,'/api/products')
+
+# class Student(Resource):
+#     def get(self,name):
+#         return { 'student':name}
+
+# api.add_resource(Student, '/student/<string:name>')
+app.run(port=5000)
